@@ -1,4 +1,7 @@
-import { showError, showLoading, showSentenceAnalysis } from "./card";
+import {
+  applyInlineHighlights,
+  clearInlineHighlights,
+} from "./inline-highlight";
 import {
   isEditableTarget,
   matchesShortcut,
@@ -40,13 +43,11 @@ async function runDetection(): Promise<TriggerDetectionResponse> {
 
   const sentence = getSentence();
   if (!sentence) {
-    showError(UNSUPPORTED_INTERFACE_MESSAGE);
-
     return buildErrorResponse("unsupported_interface", UNSUPPORTED_INTERFACE_MESSAGE);
   }
 
   isAnalyzing = true;
-  showLoading("Analyse de la phrase en cours...");
+  clearInlineHighlights();
 
   try {
     const response = (await chrome.runtime.sendMessage({
@@ -55,17 +56,13 @@ async function runDetection(): Promise<TriggerDetectionResponse> {
     })) as BackgroundResponseMessage;
 
     if (response.type === "analysisError") {
-      showError(response.message);
-
       return buildErrorResponse(response.code, response.message);
     }
 
-    showSentenceAnalysis(sentence, response.value);
+    applyInlineHighlights(response.value.corrections);
 
     return { status: "success" };
   } catch {
-    showError(SERVICE_UNAVAILABLE_MESSAGE);
-
     return buildErrorResponse("service_unavailable", SERVICE_UNAVAILABLE_MESSAGE);
   } finally {
     isAnalyzing = false;
